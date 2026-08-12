@@ -14,6 +14,18 @@ import su.nightexpress.excellenteconomy.user.CoinsUser;
 public final class ChangeBalanceEvent extends Event implements Cancellable {
 
     private static final HandlerList HANDLER_LIST = new HandlerList();
+    private static final boolean FOLIA;
+
+    static {
+        boolean folia;
+        try {
+            Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
+            folia = true;
+        } catch (ClassNotFoundException e) {
+            folia = false;
+        }
+        FOLIA = folia;
+    }
 
     private final CoinsUser         user;
     private final ExcellentCurrency currency;
@@ -24,7 +36,7 @@ public final class ChangeBalanceEvent extends Event implements Cancellable {
 
     public ChangeBalanceEvent(@NonNull CoinsUser user, @NonNull ExcellentCurrency currency, double oldAmount,
                               double newAmount) {
-        super(!Bukkit.isPrimaryThread());
+        super(FOLIA || !Bukkit.isPrimaryThread());
         this.user = user;
         this.currency = currency;
         this.oldAmount = oldAmount;

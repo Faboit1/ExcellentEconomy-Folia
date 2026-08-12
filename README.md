@@ -51,13 +51,13 @@ The following versions and platforms are supported:
 
 | **Server Version**  | **Paper** | **Spigot** | **Folia** | **Java Version**
 | :---: | :---: | :---: | :--: | :---: |
-| 26.2 | ✔️ | ✔️ | ❌ | 25 |
-| 26.1.2 | ✔️ | ✔️ | ❌ | 25 |
-| 26.1.1 | ✔️ | ✔️ | ❌ | 25 |
-| 1.21.11 | ✔️ | ✔️ | ❌ | 25 |
-| 1.21.10 | ✔️ | ✔️ | ❌ | 25 |
-| 1.21.9 | ✔️ | ✔️ | ❌ | 25 |
-| 1.21.8 | ✔️ | ✔️ | ❌ | 25 |
+| 26.2 | ✔️ | ✔️ | ✔️ | 25 |
+| 26.1.2 | ✔️ | ✔️ | ✔️ | 25 |
+| 26.1.1 | ✔️ | ✔️ | ✔️ | 25 |
+| 1.21.11 | ✔️ | ✔️ | ✔️ | 25 |
+| 1.21.10 | ✔️ | ✔️ | ✔️ | 25 |
+| 1.21.9 | ✔️ | ✔️ | ✔️ | 25 |
+| 1.21.8 | ✔️ | ✔️ | ✔️ | 25 |
 
 - Anything not listed in the compatibility table is **NOT** supported.
 - Make sure to check out all known issues and incompatibilities [here](https://nightexpressdev.com/excellenteconomy/faq/).
