@@ -264,7 +264,7 @@ public abstract class AbstractCurrency implements ExcellentCurrency, ConfigBacke
     }
 
     private LangMessage getPrefixed(@NonNull MessageLocale locale) {
-        return Config.CURRENCY_PREFIX_ENABLED.get() ? locale.withPrefix(this.messagePrefix) : locale.message();
+        return locale.withPrefix("");
     }
 
     public void updateMessagePrefix() {

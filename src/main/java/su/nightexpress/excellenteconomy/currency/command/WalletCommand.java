@@ -44,7 +44,7 @@ public class WalletCommand {
                 userManager.loadByNameAsync(name).thenAccept(opt -> {
                     CoinsUser user = opt.orElse(null);
                     if (user == null) {
-                        CoreLang.ERROR_INVALID_PLAYER.withPrefix(plugin).send(sender);
+                        CoreLang.ERROR_INVALID_PLAYER.withPrefix("").send(sender);
                         return;
                     }
 

@@ -80,18 +80,18 @@ public class MigrationManager extends SimpleManager<EconomyPlugin> {
     public boolean startMigration(@NonNull CommandSender sender, @NonNull String name,
                                   @NonNull ExcellentCurrency currency) {
         if (!this.currencyManager.canPerformOperations()) {
-            Lang.MIGRATION_START_BLOCKED.message().send(sender);
+            Lang.MIGRATION_START_BLOCKED.withPrefix("").send(sender);
             return false;
         }
 
         Migrator migrator = this.getMigrator(name);
         if (migrator == null) {
-            Lang.MIGRATION_START_BAD_PLUGIN.message().send(sender);
+            Lang.MIGRATION_START_BAD_PLUGIN.withPrefix("").send(sender);
             return false;
         }
 
         if (!migrator.canMigrate(currency)) {
-            Lang.MIGRATION_START_BAD_CURRENCY.message().sendWith(sender, builder -> builder
+            Lang.MIGRATION_START_BAD_CURRENCY.withPrefix("").sendWith(sender, builder -> builder
                 .with(EconomyPlaceholders.GENERIC_NAME, migrator::getName)
                 .with(currency.placeholders())
             );
