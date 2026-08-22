@@ -120,7 +120,7 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
 
     private boolean assertOperationsEnabled(@NonNull OperationContext context) {
         if (!this.canPerformOperations()) {
-            context.getBukkitSender().ifPresent(sender -> Lang.CURRENCY_OPERATION_DISABLED.message().send(sender));
+            context.getBukkitSender().ifPresent(sender -> Lang.CURRENCY_OPERATION_DISABLED.withPrefix("").send(sender));
             return false;
         }
         return true;
@@ -338,12 +338,12 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
                                   boolean decimals) {
         String id = Strings.varStyle(name).orElse(null);
         if (id == null) {
-            Lang.CURRENCY_CREATE_BAD_NAME.message().send(sender);
+            Lang.CURRENCY_CREATE_BAD_NAME.withPrefix("").send(sender);
             return false;
         }
 
         if (this.registry.isRegistered(id)) {
-            Lang.CURRENCY_CREATE_DUPLICATED.message().send(sender);
+            Lang.CURRENCY_CREATE_DUPLICATED.withPrefix("").send(sender);
             return false;
         }
 
@@ -356,7 +356,7 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
 
         this.injectCurrency(created);
 
-        Lang.CURRENCY_CREATE_SUCCESS.message().sendWith(sender, builder -> builder.with(created.placeholders()));
+        Lang.CURRENCY_CREATE_SUCCESS.withPrefix("").sendWith(sender, builder -> builder.with(created.placeholders()));
         return true;
     }
 
@@ -366,7 +366,7 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
 
     public void resetBalances(@NonNull CommandSender sender, @Nullable ExcellentCurrency currency) {
         if (!this.canPerformOperations()) {
-            Lang.RESET_ALL_START_BLOCKED.message().send(sender);
+            Lang.RESET_ALL_START_BLOCKED.withPrefix("").send(sender);
             return;
         }
 

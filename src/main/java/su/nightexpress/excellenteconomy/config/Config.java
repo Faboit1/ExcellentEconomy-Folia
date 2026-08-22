@@ -46,7 +46,7 @@ public class Config {
     );
 
     public static final ConfigValue<Boolean> CURRENCY_PREFIX_ENABLED = ConfigValue.create("Currency.Prefix.Enabled",
-        true,
+        false,
         "Controls whether or not currency messages will use custom prefix instead of the plugin's one."
     );
 
