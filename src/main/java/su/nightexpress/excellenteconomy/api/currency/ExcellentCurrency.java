@@ -100,14 +100,6 @@ public interface ExcellentCurrency extends PlaceholderResolvable {
 
     void setSynchronizable(boolean dataSync);
 
-    boolean isTransferAllowed();
-
-    void setTransferAllowed(boolean transferAllowed);
-
-    double getMinTransferAmount();
-
-    void setMinTransferAmount(double minTransferAmount);
-
     double getStartValue();
 
     void setStartValue(double startValue);

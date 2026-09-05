@@ -58,9 +58,6 @@ public abstract class AbstractCurrency implements ExcellentCurrency, ConfigBacke
     protected double  startValue;
     protected double  maxValue;
 
-    protected boolean transferAllowed;
-    protected double  minTransferAmount;
-
     protected boolean exchangeAllowed;
     protected boolean leaderboardEnabled;
 
@@ -84,8 +81,6 @@ public abstract class AbstractCurrency implements ExcellentCurrency, ConfigBacke
         this.setDecimal(false);
         this.setStartValue(0);
         this.setMaxValue(-1);
-        this.setTransferAllowed(true);
-        this.setMinTransferAmount(-1D);
         this.setExchangeAllowed(true);
         this.leaderboardEnabled = true;
 
@@ -165,17 +160,6 @@ public abstract class AbstractCurrency implements ExcellentCurrency, ConfigBacke
             "Controls whether permission is required for this currency."
         ).read(config));
 
-        this.setTransferAllowed(ConfigValue.create("Transfer_Allowed",
-            true,
-            "Controls whether players can send this currency to other players."
-        ).read(config));
-
-        this.setMinTransferAmount(ConfigValue.create("Transfer_Min_Amount",
-            1D,
-            "Min. amount to send this currency to other players.",
-            "[*] Set to '-1' for no limit."
-        ).read(config));
-
         this.setStartValue(ConfigValue.create("Start_Value",
             0D,
             "Start currency value for new players."
@@ -227,9 +211,6 @@ public abstract class AbstractCurrency implements ExcellentCurrency, ConfigBacke
         config.set("Decimal", this.decimal);
         config.set("Start_Value", this.startValue);
         config.set("Max_Value", this.maxValue);
-
-        config.set("Transfer_Allowed", this.transferAllowed);
-        config.set("Transfer_Min_Amount", this.minTransferAmount);
 
         config.set("Exchange.Allowed", this.exchangeAllowed);
         config.remove("Exchange.Rates");
@@ -487,25 +468,6 @@ public abstract class AbstractCurrency implements ExcellentCurrency, ConfigBacke
     @Override
     public void setPermissionRequired(boolean permissionRequired) {
         this.permissionRequired = permissionRequired;
-    }
-
-    @Override
-    public boolean isTransferAllowed() {
-        return this.transferAllowed;
-    }
-
-    @Override
-    public void setTransferAllowed(boolean transferAllowed) {
-        this.transferAllowed = transferAllowed;
-    }
-
-    public double getMinTransferAmount() {
-        return this.minTransferAmount;
-    }
-
-    @Override
-    public void setMinTransferAmount(double minTransferAmount) {
-        this.minTransferAmount = minTransferAmount;
     }
 
     @Override
