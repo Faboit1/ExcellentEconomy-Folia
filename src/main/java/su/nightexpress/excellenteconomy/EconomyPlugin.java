@@ -106,6 +106,9 @@ public class EconomyPlugin extends NightPlugin {
 
     @Override
     public void disable() {
+        // Block balance changes before the final user save; on /reload the plugin stays enabled, so Vault/API calls
+        // would otherwise mutate users after they were saved (or hit the closed pool).
+        if (this.currencyManager != null) this.currencyManager.disableOperations();
         if (this.commandManager != null) this.commandManager.shutdown();
         if (this.topManager != null) this.topManager.shutdown();
         if (this.migrationManager != null) this.migrationManager.shutdown();

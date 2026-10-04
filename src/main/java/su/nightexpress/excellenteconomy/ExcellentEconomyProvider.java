@@ -218,7 +218,7 @@ public class ExcellentEconomyProvider implements ExcellentEconomyAPI {
     public CompletableFuture<OperationResult> withdrawAsync(@NonNull UUID playerId, @NonNull ExcellentCurrency currency,
                                                             double amount, @NonNull OperationContext context) {
         return this.userManager().loadByIdAsync(playerId)
-            .thenApply(opt -> opt.map(user -> this.currencyManager().remove(context, user, currency, amount)).orElse(
+            .thenApply(opt -> opt.map(user -> this.currencyManager().withdraw(context, user, currency, amount)).orElse(
                 OperationResult.FAILURE));
     }
 
@@ -242,7 +242,7 @@ public class ExcellentEconomyProvider implements ExcellentEconomyAPI {
     @Override
     public boolean withdraw(@NonNull Player player, @NonNull ExcellentCurrency currency, double amount,
                             @NonNull OperationContext context) {
-        return this.currencyManager().remove(context, player, currency, amount) == OperationResult.SUCCESS;
+        return this.currencyManager().withdraw(context, player, currency, amount) == OperationResult.SUCCESS;
     }
 
 

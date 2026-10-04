@@ -48,10 +48,6 @@ public class Lang implements LangContainer {
         .text("Take player's currency.");
     public static final TextLocale COMMAND_CURRENCY_SET_DESC      = LangEntry.builder("Command.Currency.Set.Desc").text(
         "Set player's currency balance.");
-    public static final TextLocale COMMAND_CURRENCY_SEND_DESC     = LangEntry.builder("Command.Currency.Send.Desc")
-        .text("Transfer currency to a player.");
-    public static final TextLocale COMMAND_CURRENCY_PAYMENTS_DESC = LangEntry.builder("Command.Currency.Payments.Desc")
-        .text("Toggle payments acception from other players.");
     public static final TextLocale COMMAND_CURRENCY_EXCHANGE_DESC = LangEntry.builder("Command.Currency.Exchange.Desc")
         .text("Exchange currency.");
     public static final TextLocale COMMAND_CURRENCY_TOP_DESC      = LangEntry.builder("Command.Currency.Top.Desc").text(
@@ -217,41 +213,6 @@ public class Lang implements LangContainer {
         .chatMessage(
             GRAY.wrap("Your " + SOFT_YELLOW.wrap(CURRENCY_NAME) + " balance has been set to " + SOFT_YELLOW.wrap(
                 GENERIC_AMOUNT) + "."));
-
-
-    public static final MessageLocale CURRENCY_SEND_ERROR_NOT_ENOUGH = LangEntry.builder(
-        "Command.Currency.Send.Error.NotEnough").chatMessage(
-            GRAY.wrap("You don't have enough " + SOFT_RED.wrap(CURRENCY_NAME) + "!"));
-
-    public static final MessageLocale CURRENCY_SEND_ERROR_TOO_LOW = LangEntry.builder(
-        "Command.Currency.Send.Error.TooLow").chatMessage(
-            GRAY.wrap("You can not send smaller than " + SOFT_RED.wrap(GENERIC_AMOUNT) + "!"));
-
-    public static final MessageLocale CURRENCY_SEND_ERROR_NO_PAYMENTS = LangEntry.builder(
-        "Command.Currency.Send.Error.NoPayments").chatMessage(
-            GRAY.wrap(SOFT_RED.wrap(CommonPlaceholders.PLAYER_NAME) + " does not accept " + SOFT_RED.wrap(
-                CURRENCY_NAME) + "!"));
-
-    public static final MessageLocale CURRENCY_SEND_DONE_SENDER = LangEntry.builder("Command.Currency.Send.Done.Sender")
-        .chatMessage(
-            GRAY.wrap("You sent " + SOFT_YELLOW.wrap(GENERIC_AMOUNT) + " to " + SOFT_YELLOW.wrap(
-                CommonPlaceholders.PLAYER_NAME) + "!"));
-
-    public static final MessageLocale CURRENCY_SEND_NOTIFY = LangEntry.builder("Command.Currency.Send.Done.Notify")
-        .chatMessage(
-            GRAY.wrap("You received " + SOFT_YELLOW.wrap(GENERIC_AMOUNT) + " from " + SOFT_YELLOW.wrap(
-                CommonPlaceholders.PLAYER_NAME) + "."));
-
-
-    public static final MessageLocale COMMAND_CURRENCY_PAYMENTS_TOGGLE = LangEntry.builder(
-        "Command.Currency.Payments.Toggle").chatMessage(
-            GRAY.wrap(SOFT_YELLOW.wrap(CURRENCY_NAME) + " payments acception: " + SOFT_YELLOW.wrap(GENERIC_STATE) +
-                "."));
-
-    public static final MessageLocale COMMAND_CURRENCY_PAYMENTS_TARGET = LangEntry.builder(
-        "Command.Currency.Payments.Target").chatMessage(
-            GRAY.wrap(SOFT_YELLOW.wrap(CURRENCY_NAME) + " payments acception for " + SOFT_YELLOW.wrap(
-                CommonPlaceholders.PLAYER_NAME) + ": " + SOFT_YELLOW.wrap(GENERIC_STATE) + "."));
 
 
     public static final MessageLocale TOP_LIST = LangEntry.builder("Command.Currency.Top.List").message(

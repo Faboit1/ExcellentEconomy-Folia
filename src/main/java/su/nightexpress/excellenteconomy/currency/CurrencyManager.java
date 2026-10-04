@@ -27,9 +27,7 @@ import su.nightexpress.excellenteconomy.data.DataHandler;
 import su.nightexpress.excellenteconomy.hook.HookPlugin;
 import su.nightexpress.excellenteconomy.user.CoinsUser;
 import su.nightexpress.excellenteconomy.user.UserManager;
-import su.nightexpress.excellenteconomy.user.data.CurrencySettings;
 import su.nightexpress.nightcore.config.FileConfig;
-import su.nightexpress.nightcore.core.config.CoreLang;
 import su.nightexpress.nightcore.manager.AbstractManager;
 import su.nightexpress.nightcore.util.FileUtil;
 import su.nightexpress.nightcore.util.Plugins;
@@ -56,8 +54,8 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
     private final DataHandler      dataHandler;
     private final UserManager      userManager;
 
-    private boolean        operationsAllowed;
-    private CurrencyLogger logger;
+    private volatile boolean operationsAllowed;
+    private CurrencyLogger   logger;
 
     public CurrencyManager(@NonNull EconomyPlugin plugin,
                            @NonNull CurrencyRegistry registry,
@@ -126,6 +124,11 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
         return true;
     }
 
+    // Rejects NaN/Infinity (NaN passes every '<' / '>=' guard) and negatives (abs() would flip their sign).
+    private static boolean isValidAmount(double amount) {
+        return Double.isFinite(amount) && amount >= 0D;
+    }
+
     private void migrateSettings() {
         FileUtil.findYamlFiles(this.getDirectory()).forEach(path -> {
             String fileName = path.getFileName().toString();
@@ -176,12 +179,6 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
             CommandDefinition.childOnly("give", "ecogive")
         );
 
-        this.commandManager.addCurrencyCommand("payments",
-            () -> new PaymentsCommand(this, this.userManager),
-            CommandDefinition.allEnabled("payments", "paytoggle", "payments"),
-            ExcellentCurrency::isTransferAllowed
-        );
-
         this.commandManager.addCurrencyCommand("remove",
             () -> new RemoveCommand(this, this.userManager),
             CommandDefinition.allEnabled("take", "ecotake")
@@ -190,12 +187,6 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
         this.commandManager.addCurrencyCommand("reset",
             () -> new ResetCommand(this, this.userManager),
             CommandDefinition.childOnly("reset", "ecoreset")
-        );
-
-        this.commandManager.addCurrencyCommand("send",
-            () -> new PayCommand(this, this.userManager),
-            CommandDefinition.allEnabled("pay", "pay"),
-            ExcellentCurrency::isTransferAllowed
         );
 
         this.commandManager.addCurrencyCommand("set",
@@ -392,14 +383,6 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
         });
     }
 
-    public boolean getPaymentsState(@NonNull Player player, @NonNull ExcellentCurrency currency) {
-        return this.getPaymentsState(this.userManager.getOrFetch(player), currency);
-    }
-
-    public boolean getPaymentsState(@NonNull CoinsUser user, @NonNull ExcellentCurrency currency) {
-        return user.getSettings(currency).isPaymentsEnabled();
-    }
-
     public void showBalance(@NonNull Player player, @NonNull ExcellentCurrency currency) {
         this.showBalance(player, this.userManager.getOrFetch(player), currency);
     }
@@ -436,28 +419,6 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
         return true;
     }
 
-    public boolean togglePayments(@NonNull Player player, @NonNull ExcellentCurrency currency) {
-        CoinsUser user = this.userManager.getOrFetch(player);
-
-        return this.togglePayments(user, currency, false);
-    }
-
-    public boolean togglePayments(@NonNull CoinsUser user, @NonNull ExcellentCurrency currency, boolean silent) {
-        CurrencySettings settings = user.getSettings(currency);
-        settings.setPaymentsEnabled(!settings.isPaymentsEnabled());
-        user.markDirty();
-
-        Player target = user.player().orElse(null);
-        if (!silent && target != null) {
-            currency.sendPrefixed(Lang.COMMAND_CURRENCY_PAYMENTS_TOGGLE, target, builder -> builder
-                .with(EconomyPlaceholders.GENERIC_STATE, () -> CoreLang.STATE_ENABLED_DISALBED.get(settings
-                    .isPaymentsEnabled()))
-            );
-        }
-
-        return true;
-    }
-
     public double getBalance(@NonNull Player player, @NonNull ExcellentCurrency currency) {
         return this.getBalance(this.userManager.getOrFetch(player), currency);
     }
@@ -476,6 +437,7 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
     public OperationResult give(@NonNull OperationContext context, @NonNull CoinsUser user,
                                 @NonNull ExcellentCurrency currency, double amount) {
         if (!this.assertOperationsEnabled(context)) return OperationResult.FAILURE;
+        if (!isValidAmount(amount)) return OperationResult.FAILURE;
 
         OperationExecutor executor = context.getExecutor();
 
@@ -514,6 +476,7 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
     public OperationResult giveAll(@NonNull OperationContext context, @NonNull ExcellentCurrency currency,
                                    double amount) {
         if (!this.assertOperationsEnabled(context)) return OperationResult.FAILURE;
+        if (!isValidAmount(amount)) return OperationResult.FAILURE;
 
         OperationExecutor executor = context.getExecutor();
         Set<CoinsUser> users = this.userManager.getRepository().getAll();
@@ -562,11 +525,41 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
     public OperationResult remove(@NonNull OperationContext context, @NonNull CoinsUser user,
                                   @NonNull ExcellentCurrency currency, double amount) {
         if (!this.assertOperationsEnabled(context)) return OperationResult.FAILURE;
-
-        OperationExecutor executor = context.getExecutor();
+        if (!isValidAmount(amount)) return OperationResult.FAILURE;
 
         user.removeBalance(currency, amount);
         user.markDirty();
+
+        this.notifyRemoved(context, user, currency, amount);
+        return OperationResult.SUCCESS;
+    }
+
+    @NonNull
+    public OperationResult withdraw(@NonNull OperationContext context, @NonNull Player player,
+                                    @NonNull ExcellentCurrency currency, double amount) {
+        return this.withdraw(context, this.userManager.getOrFetch(player), currency, amount);
+    }
+
+    /**
+     * Charges the user only if they can afford it. Unlike {@link #remove}, which clamps at zero for admin use,
+     * this fails instead of succeeding on an overdraft.
+     */
+    @NonNull
+    public OperationResult withdraw(@NonNull OperationContext context, @NonNull CoinsUser user,
+                                    @NonNull ExcellentCurrency currency, double amount) {
+        if (!this.assertOperationsEnabled(context)) return OperationResult.FAILURE;
+        if (!isValidAmount(amount)) return OperationResult.FAILURE;
+        if (!user.tryRemoveBalance(currency, amount)) return OperationResult.FAILURE;
+
+        user.markDirty();
+
+        this.notifyRemoved(context, user, currency, amount);
+        return OperationResult.SUCCESS;
+    }
+
+    private void notifyRemoved(@NonNull OperationContext context, @NonNull CoinsUser user,
+                               @NonNull ExcellentCurrency currency, double amount) {
+        OperationExecutor executor = context.getExecutor();
 
         if (this.logger != null && context.shouldNotifyLogger()) {
             this.logger.addEntry(context, "[%s] %s took %s from %s's balance. New balance: %s"
@@ -592,8 +585,6 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
                 );
             });
         }
-
-        return OperationResult.SUCCESS;
     }
 
     @NonNull
@@ -606,6 +597,7 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
     public OperationResult set(@NonNull OperationContext context, @NonNull CoinsUser user,
                                @NonNull ExcellentCurrency currency, double amount) {
         if (!this.assertOperationsEnabled(context)) return OperationResult.FAILURE;
+        if (!isValidAmount(amount)) return OperationResult.FAILURE;
 
         OperationExecutor executor = context.getExecutor();
 
@@ -684,75 +676,6 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
         return OperationResult.SUCCESS;
     }
 
-    public boolean send(@NonNull Player sender, @NonNull CoinsUser targetUser, @NonNull ExcellentCurrency currency,
-                        double rawAmount) {
-        OperationContext context = OperationContext.of(sender);
-
-        if (!this.assertOperationsEnabled(context)) return false;
-
-        if (targetUser.isHolder(sender)) {
-            currency.sendPrefixed(CoreLang.COMMAND_EXECUTION_NOT_YOURSELF, sender);
-            return false;
-        }
-
-        double amount = currency.floorIfNeeded(rawAmount);
-        if (amount <= 0D) return false;
-
-        double minAmount = currency.getMinTransferAmount();
-        if (minAmount > 0 && amount < minAmount) {
-            currency.sendPrefixed(Lang.CURRENCY_SEND_ERROR_TOO_LOW, sender, builder -> builder
-                .with(EconomyPlaceholders.GENERIC_AMOUNT, () -> currency.format(minAmount))
-            );
-            return false;
-        }
-
-        CoinsUser fromUser = this.userManager.getOrFetch(sender);
-        if (amount > fromUser.getBalance(currency)) {
-            currency.sendPrefixed(Lang.CURRENCY_SEND_ERROR_NOT_ENOUGH, sender);
-            return false;
-        }
-
-        CurrencySettings settings = targetUser.getSettings(currency);
-        if (!settings.isPaymentsEnabled()) {
-            currency.sendPrefixed(Lang.CURRENCY_SEND_ERROR_NO_PAYMENTS, sender, builder -> builder
-                .with(CommonPlaceholders.PLAYER_NAME, targetUser::getName)
-            );
-            return false;
-        }
-
-        targetUser.addBalance(currency, amount);
-        targetUser.markDirty();
-        fromUser.removeBalance(currency, amount);
-        fromUser.markDirty();
-
-        currency.sendPrefixed(Lang.CURRENCY_SEND_DONE_SENDER, sender, builder -> builder
-            .with(EconomyPlaceholders.GENERIC_AMOUNT, () -> currency.format(amount))
-            .with(EconomyPlaceholders.GENERIC_BALANCE, () -> currency.format(fromUser.getBalance(currency)))
-            .with(CommonPlaceholders.PLAYER_NAME, targetUser::getName)
-        );
-
-        targetUser.player().ifPresent(target -> {
-            currency.sendPrefixed(Lang.CURRENCY_SEND_NOTIFY, target, builder -> builder
-                .with(EconomyPlaceholders.GENERIC_AMOUNT, () -> currency.format(amount))
-                .with(EconomyPlaceholders.GENERIC_BALANCE, () -> currency.format(targetUser.getBalance(currency)))
-                .with(CommonPlaceholders.PLAYER.resolver(sender))
-            );
-        });
-
-        if (this.logger != null) {
-            this.logger.addEntry(context, "[%s] %s paid %s to %s. New balances: %s and %s.".formatted(
-                currency.getId(),
-                sender.getName(),
-                currency.format(amount),
-                targetUser.getName(),
-                currency.format(fromUser.getBalance(currency)),
-                currency.format(targetUser.getBalance(currency))
-            ));
-        }
-
-        return true;
-    }
-
     public boolean exchange(@NonNull Player player, @NonNull ExcellentCurrency sourceCurrency,
                             @NonNull ExcellentCurrency targetCurrency, double initAmount) {
         OperationContext context = OperationContext.of(player);
@@ -765,7 +688,7 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
         }
 
         double amount = sourceCurrency.floorIfNeeded(initAmount);
-        if (amount <= 0D) {
+        if (!Double.isFinite(amount) || amount <= 0D) {
             sourceCurrency.sendPrefixed(Lang.CURRENCY_EXCHANGE_ERROR_LOW_AMOUNT, player);
             return false;
         }
@@ -786,7 +709,7 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
         }
 
         double result = sourceCurrency.getExchangeResult(targetCurrency, amount);
-        if (result <= 0D) {
+        if (!Double.isFinite(result) || result <= 0D) {
             sourceCurrency.sendPrefixed(Lang.CURRENCY_EXCHANGE_ERROR_LOW_AMOUNT, player);
             return false;
         }
@@ -800,7 +723,12 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
             return false;
         }
 
-        user.removeBalance(sourceCurrency, amount);
+        if (!user.tryRemoveBalance(sourceCurrency, amount)) {
+            sourceCurrency.sendPrefixed(Lang.CURRENCY_EXCHANGE_ERROR_LOW_BALANCE, player, builder -> builder
+                .with(EconomyPlaceholders.GENERIC_AMOUNT, () -> sourceCurrency.format(amount))
+            );
+            return false;
+        }
         user.addBalance(targetCurrency, result);
         user.markDirty();
 

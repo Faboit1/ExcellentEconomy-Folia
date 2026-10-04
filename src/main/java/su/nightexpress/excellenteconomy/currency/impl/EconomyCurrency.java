@@ -66,7 +66,7 @@ public class EconomyCurrency extends AbstractCurrency implements Economy {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return this.api.plugin().isEnabled();
     }
 
     @Override
@@ -113,6 +113,7 @@ public class EconomyCurrency extends AbstractCurrency implements Economy {
 
     @Override
     public double getBalance(OfflinePlayer player) {
+        if (!this.isEnabled()) return 0D;
         CoinsUser user = this.api.userManager().getOrFetch(player.getUniqueId()).orElse(null);
         return this.getBalance(user);
     }
@@ -124,6 +125,7 @@ public class EconomyCurrency extends AbstractCurrency implements Economy {
 
     @Override
     public double getBalance(String playerName) {
+        if (!this.isEnabled()) return 0D;
         CoinsUser user = this.api.userManager().getOrFetch(playerName).orElse(null);
         return this.getBalance(user);
     }
@@ -140,6 +142,7 @@ public class EconomyCurrency extends AbstractCurrency implements Economy {
 
     @Override
     public boolean hasAccount(OfflinePlayer player) {
+        if (!this.isEnabled()) return false;
         return this.api.userManager().getDataAccessor().isExists(player.getUniqueId());
     }
 
@@ -150,6 +153,7 @@ public class EconomyCurrency extends AbstractCurrency implements Economy {
 
     @Override
     public boolean hasAccount(String playerName) {
+        if (!this.isEnabled()) return false;
         return this.api.userManager().getDataAccessor().isExists(playerName);
     }
 
@@ -161,6 +165,7 @@ public class EconomyCurrency extends AbstractCurrency implements Economy {
 
     @Override
     public boolean has(OfflinePlayer player, double amount) {
+        if (!this.isEnabled()) return false;
         CoinsUser user = this.api.userManager().getOrFetch(player.getUniqueId()).orElse(null);
         return this.has(user, amount);
     }
@@ -172,6 +177,7 @@ public class EconomyCurrency extends AbstractCurrency implements Economy {
 
     @Override
     public boolean has(String playerName, double amount) {
+        if (!this.isEnabled()) return false;
         CoinsUser user = this.api.userManager().getOrFetch(playerName).orElse(null);
         return this.has(user, amount);
     }
@@ -188,6 +194,7 @@ public class EconomyCurrency extends AbstractCurrency implements Economy {
 
     @Override
     public EconomyResponse depositPlayer(OfflinePlayer player, double amount) {
+        if (!this.isEnabled()) return new EconomyResponse(amount, 0, EconomyResponse.ResponseType.FAILURE, "Plugin is disabled.");
         CoinsUser user = this.api.userManager().getOrFetch(player.getUniqueId()).orElse(null);
         return this.depositUser(user, amount);
     }
@@ -199,6 +206,7 @@ public class EconomyCurrency extends AbstractCurrency implements Economy {
 
     @Override
     public EconomyResponse depositPlayer(String playerName, double amount) {
+        if (!this.isEnabled()) return new EconomyResponse(amount, 0, EconomyResponse.ResponseType.FAILURE, "Plugin is disabled.");
         CoinsUser user = this.api.userManager().getOrFetch(playerName).orElse(null);
         return this.depositUser(user, amount);
     }
@@ -224,6 +232,7 @@ public class EconomyCurrency extends AbstractCurrency implements Economy {
 
     @Override
     public EconomyResponse withdrawPlayer(OfflinePlayer player, double amount) {
+        if (!this.isEnabled()) return new EconomyResponse(amount, 0, EconomyResponse.ResponseType.FAILURE, "Plugin is disabled.");
         CoinsUser user = this.api.userManager().getOrFetch(player.getUniqueId()).orElse(null);
         return this.withdrawUser(user, amount);
     }
@@ -235,6 +244,7 @@ public class EconomyCurrency extends AbstractCurrency implements Economy {
 
     @Override
     public EconomyResponse withdrawPlayer(String playerName, double amount) {
+        if (!this.isEnabled()) return new EconomyResponse(amount, 0, EconomyResponse.ResponseType.FAILURE, "Plugin is disabled.");
         CoinsUser user = this.api.userManager().getOrFetch(playerName).orElse(null);
         return this.withdrawUser(user, amount);
     }
@@ -251,7 +261,7 @@ public class EconomyCurrency extends AbstractCurrency implements Economy {
                 this), EconomyResponse.ResponseType.FAILURE, Lang.ECONOMY_ERROR_INSUFFICIENT_FUNDS.text());
         }
 
-        OperationResult result = this.api.currencyManager().remove(this.operationContext(), user, this, amount);
+        OperationResult result = this.api.currencyManager().withdraw(this.operationContext(), user, this, amount);
         EconomyResponse.ResponseType type = result == OperationResult.SUCCESS ? EconomyResponse.ResponseType.SUCCESS : EconomyResponse.ResponseType.FAILURE;
 
         return new EconomyResponse(amount, user.getBalance(this), type, null);

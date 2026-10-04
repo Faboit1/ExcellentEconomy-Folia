@@ -52,13 +52,29 @@ public class CoinsUser extends UserTemplate {
         double oldBalance = this.getBalance(currency);
 
         consumer.accept(this.balance);
+        double newBalance = this.getBalance(currency);
 
-        ChangeBalanceEvent event = new ChangeBalanceEvent(this, currency, oldBalance, this.getBalance(currency));
+        ChangeBalanceEvent event = new ChangeBalanceEvent(this, currency, oldBalance, newBalance);
+        Bukkit.getPluginManager().callEvent(event);
+
+        // Revert only this edit's delta; restoring the old snapshot would erase concurrent changes.
+        if (event.isCancelled()) {
+            this.balance.adjust(currency.getId(), oldBalance - newBalance);
+        }
+    }
+
+    public boolean tryRemoveBalance(@NonNull ExcellentCurrency currency, double amount) {
+        if (!this.balance.tryRemove(currency, amount)) return false;
+
+        double newBalance = this.getBalance(currency);
+        ChangeBalanceEvent event = new ChangeBalanceEvent(this, currency, newBalance + amount, newBalance);
         Bukkit.getPluginManager().callEvent(event);
 
         if (event.isCancelled()) {
-            this.balance.set(currency, oldBalance);
+            this.balance.adjust(currency.getId(), amount);
+            return false;
         }
+        return true;
     }
 
     public void resetBalance(@NonNull Collection<ExcellentCurrency> currencies) {

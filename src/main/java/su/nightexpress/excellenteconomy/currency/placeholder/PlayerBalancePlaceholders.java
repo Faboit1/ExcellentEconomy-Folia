@@ -6,7 +6,6 @@ import su.nightexpress.excellenteconomy.currency.CurrencyManager;
 import su.nightexpress.excellenteconomy.currency.CurrencyRegistry;
 import su.nightexpress.nightcore.bridge.placeholder.PlaceholderProvider;
 import su.nightexpress.nightcore.bridge.placeholder.PlaceholderRegistry;
-import su.nightexpress.nightcore.core.config.CoreLang;
 import su.nightexpress.nightcore.util.text.night.NightMessage;
 
 public class PlayerBalancePlaceholders implements PlaceholderProvider {
@@ -22,10 +21,6 @@ public class PlayerBalancePlaceholders implements PlaceholderProvider {
     @Override
     public void addPlaceholders(@NonNull PlaceholderRegistry registry) {
         registry.addResolver(ExcellentCurrency.class, (player, payload) -> this.currencyRegistry.getById(payload));
-
-        registry.registerMapped("payments_state", ExcellentCurrency.class, (player, currency) -> {
-            return CoreLang.STATE_ENABLED_DISALBED.get(this.manager.getPaymentsState(player, currency));
-        });
 
         registry.registerMapped("balance_short_clean", ExcellentCurrency.class, (player, currency) -> {
             return NightMessage.stripTags(currency.formatCompact(this.manager.getBalance(player, currency)));
