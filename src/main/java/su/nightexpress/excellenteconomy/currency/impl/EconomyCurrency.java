@@ -261,7 +261,7 @@ public class EconomyCurrency extends AbstractCurrency implements Economy {
                 this), EconomyResponse.ResponseType.FAILURE, Lang.ECONOMY_ERROR_INSUFFICIENT_FUNDS.text());
         }
 
-        OperationResult result = this.api.currencyManager().remove(this.operationContext(), user, this, amount);
+        OperationResult result = this.api.currencyManager().withdraw(this.operationContext(), user, this, amount);
         EconomyResponse.ResponseType type = result == OperationResult.SUCCESS ? EconomyResponse.ResponseType.SUCCESS : EconomyResponse.ResponseType.FAILURE;
 
         return new EconomyResponse(amount, user.getBalance(this), type, null);

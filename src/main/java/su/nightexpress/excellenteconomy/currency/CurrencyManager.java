@@ -54,8 +54,8 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
     private final DataHandler      dataHandler;
     private final UserManager      userManager;
 
-    private boolean        operationsAllowed;
-    private CurrencyLogger logger;
+    private volatile boolean operationsAllowed;
+    private CurrencyLogger   logger;
 
     public CurrencyManager(@NonNull EconomyPlugin plugin,
                            @NonNull CurrencyRegistry registry,
@@ -122,6 +122,11 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
             return false;
         }
         return true;
+    }
+
+    // Rejects NaN/Infinity (NaN passes every '<' / '>=' guard) and negatives (abs() would flip their sign).
+    private static boolean isValidAmount(double amount) {
+        return Double.isFinite(amount) && amount >= 0D;
     }
 
     private void migrateSettings() {
@@ -432,6 +437,7 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
     public OperationResult give(@NonNull OperationContext context, @NonNull CoinsUser user,
                                 @NonNull ExcellentCurrency currency, double amount) {
         if (!this.assertOperationsEnabled(context)) return OperationResult.FAILURE;
+        if (!isValidAmount(amount)) return OperationResult.FAILURE;
 
         OperationExecutor executor = context.getExecutor();
 
@@ -470,6 +476,7 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
     public OperationResult giveAll(@NonNull OperationContext context, @NonNull ExcellentCurrency currency,
                                    double amount) {
         if (!this.assertOperationsEnabled(context)) return OperationResult.FAILURE;
+        if (!isValidAmount(amount)) return OperationResult.FAILURE;
 
         OperationExecutor executor = context.getExecutor();
         Set<CoinsUser> users = this.userManager.getRepository().getAll();
@@ -518,11 +525,41 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
     public OperationResult remove(@NonNull OperationContext context, @NonNull CoinsUser user,
                                   @NonNull ExcellentCurrency currency, double amount) {
         if (!this.assertOperationsEnabled(context)) return OperationResult.FAILURE;
-
-        OperationExecutor executor = context.getExecutor();
+        if (!isValidAmount(amount)) return OperationResult.FAILURE;
 
         user.removeBalance(currency, amount);
         user.markDirty();
+
+        this.notifyRemoved(context, user, currency, amount);
+        return OperationResult.SUCCESS;
+    }
+
+    @NonNull
+    public OperationResult withdraw(@NonNull OperationContext context, @NonNull Player player,
+                                    @NonNull ExcellentCurrency currency, double amount) {
+        return this.withdraw(context, this.userManager.getOrFetch(player), currency, amount);
+    }
+
+    /**
+     * Charges the user only if they can afford it. Unlike {@link #remove}, which clamps at zero for admin use,
+     * this fails instead of succeeding on an overdraft.
+     */
+    @NonNull
+    public OperationResult withdraw(@NonNull OperationContext context, @NonNull CoinsUser user,
+                                    @NonNull ExcellentCurrency currency, double amount) {
+        if (!this.assertOperationsEnabled(context)) return OperationResult.FAILURE;
+        if (!isValidAmount(amount)) return OperationResult.FAILURE;
+        if (!user.tryRemoveBalance(currency, amount)) return OperationResult.FAILURE;
+
+        user.markDirty();
+
+        this.notifyRemoved(context, user, currency, amount);
+        return OperationResult.SUCCESS;
+    }
+
+    private void notifyRemoved(@NonNull OperationContext context, @NonNull CoinsUser user,
+                               @NonNull ExcellentCurrency currency, double amount) {
+        OperationExecutor executor = context.getExecutor();
 
         if (this.logger != null && context.shouldNotifyLogger()) {
             this.logger.addEntry(context, "[%s] %s took %s from %s's balance. New balance: %s"
@@ -548,8 +585,6 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
                 );
             });
         }
-
-        return OperationResult.SUCCESS;
     }
 
     @NonNull
@@ -562,6 +597,7 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
     public OperationResult set(@NonNull OperationContext context, @NonNull CoinsUser user,
                                @NonNull ExcellentCurrency currency, double amount) {
         if (!this.assertOperationsEnabled(context)) return OperationResult.FAILURE;
+        if (!isValidAmount(amount)) return OperationResult.FAILURE;
 
         OperationExecutor executor = context.getExecutor();
 
@@ -652,7 +688,7 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
         }
 
         double amount = sourceCurrency.floorIfNeeded(initAmount);
-        if (amount <= 0D) {
+        if (!Double.isFinite(amount) || amount <= 0D) {
             sourceCurrency.sendPrefixed(Lang.CURRENCY_EXCHANGE_ERROR_LOW_AMOUNT, player);
             return false;
         }
@@ -673,7 +709,7 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
         }
 
         double result = sourceCurrency.getExchangeResult(targetCurrency, amount);
-        if (result <= 0D) {
+        if (!Double.isFinite(result) || result <= 0D) {
             sourceCurrency.sendPrefixed(Lang.CURRENCY_EXCHANGE_ERROR_LOW_AMOUNT, player);
             return false;
         }
@@ -687,7 +723,12 @@ public class CurrencyManager extends AbstractManager<EconomyPlugin> {
             return false;
         }
 
-        user.removeBalance(sourceCurrency, amount);
+        if (!user.tryRemoveBalance(sourceCurrency, amount)) {
+            sourceCurrency.sendPrefixed(Lang.CURRENCY_EXCHANGE_ERROR_LOW_BALANCE, player, builder -> builder
+                .with(EconomyPlaceholders.GENERIC_AMOUNT, () -> sourceCurrency.format(amount))
+            );
+            return false;
+        }
         user.addBalance(targetCurrency, result);
         user.markDirty();
 

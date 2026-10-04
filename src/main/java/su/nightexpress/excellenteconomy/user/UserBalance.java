@@ -50,7 +50,7 @@ public class UserBalance {
     }
 
     public double get(@NonNull String currencyId) {
-        return Math.max(0, this.balanceMap.getOrDefault(currencyId, 0D));
+        return sanitize(this.balanceMap.get(currencyId));
     }
 
     public void add(@NonNull ExcellentCurrency currency, double amount) {
@@ -58,7 +58,7 @@ public class UserBalance {
     }
 
     public void add(@NonNull String currencyId, double amount) {
-        this.balanceMap.compute(currencyId, (k, v) -> Math.max(0, (v == null ? 0D : v) + Math.abs(amount)));
+        this.adjust(currencyId, Math.abs(amount));
     }
 
     public void remove(@NonNull ExcellentCurrency currency, double amount) {
@@ -66,7 +66,24 @@ public class UserBalance {
     }
 
     public void remove(@NonNull String currencyId, double amount) {
-        this.balanceMap.compute(currencyId, (k, v) -> Math.max(0, (v == null ? 0D : v) - Math.abs(amount)));
+        this.adjust(currencyId, -Math.abs(amount));
+    }
+
+    /**
+     * Atomically removes the amount only if the balance covers it, so concurrent withdrawals cannot overdraw.
+     */
+    public boolean tryRemove(@NonNull ExcellentCurrency currency, double amount) {
+        if (!Double.isFinite(amount) || amount < 0) return false;
+
+        boolean[] removed = {false};
+        this.balanceMap.compute(currency.getId(), (k, v) -> {
+            double current = sanitize(v);
+            if (current < amount) return v;
+
+            removed[0] = true;
+            return current - amount;
+        });
+        return removed[0];
     }
 
     public void set(@NonNull ExcellentCurrency currency, double amount) {
@@ -74,6 +91,16 @@ public class UserBalance {
     }
 
     public void set(@NonNull String currencyId, double amount) {
-        this.balanceMap.put(currencyId, Math.max(0, amount));
+        this.balanceMap.put(currencyId, sanitize(amount));
+    }
+
+    void adjust(@NonNull String currencyId, double delta) {
+        if (!Double.isFinite(delta)) return;
+
+        this.balanceMap.compute(currencyId, (k, v) -> Math.max(0, sanitize(v) + delta));
+    }
+
+    private static double sanitize(Double value) {
+        return value == null || !Double.isFinite(value) ? 0D : Math.max(0, value);
     }
 }
